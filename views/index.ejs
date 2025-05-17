@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>PetCare API</title>
+</head>
+<body style="font-family: sans-serif; text-align: center; margin-top: 5rem;">
+  <h1>✅ API PetCare funcionando</h1>
+
+  <form action="/api/sensores" method="POST">
+    <input type="hidden" name="temperatura" value="25.5" />
+    <input type="hidden" name="humedad" value="60.1" />
+    <input type="hidden" name="device_id" value="test-ui" />
+    <button type="submit">Enviar solicitud de prueba</button>
+  </form>
+
+  <p style="margin-top: 2rem; color: gray;">PetCare API - ESP32 + Firebase</p>
+</body>
+</html>
