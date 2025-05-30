@@ -1,28 +1,30 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '../../lib/firebase';
-import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
+import { collection, getDocs } from "firebase/firestore";
 
-// Define el tipo de datos del log del servo
+
 type ServoLog = {
-  timestamp: string; // o Date si así está en Firestore
-  status: string; // o boolean, dependiendo de cómo guardes el estado del servo
+  timestamp: string;
+  status: string;
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   try {
-    const snapshot = await db
-      .collection('servo_log')
-      .orderBy('timestamp', 'desc')
-      .limit(1)
-      .get();
-
-    const data: ServoLog[] = snapshot.docs.map(
-      (doc: QueryDocumentSnapshot<ServoLog>) => doc.data()
-    );
+    const snapshot = await getDocs(collection(db, "servo_log"));
+    const data: ServoLog[] = snapshot.docs.map((doc) => {
+      const d = doc.data() as ServoLog;
+      return {
+        timestamp: d.timestamp,
+        status: d.status,
+      };
+    });
 
     res.status(200).json(data[0] || {});
   } catch (error) {
-    console.error('Error al obtener log del servo:', error);
-    res.status(500).json({ error: 'Error al obtener log del servo' });
+    console.error("Error fetching servo logs:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 }
