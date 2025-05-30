@@ -17,11 +17,9 @@ export default async function handler(
     const data: ServoLog[] = snapshot.docs.map((doc) => {
       const d = doc.data();
       return {
-        // Asegúrate que sea una ISO string para el frontend
         timestamp: d.fechaHoraAccionado || "",
 
-        // Si `status` no existe, puedes asumir algo o manejarlo con lógica adicional
-        status: true, // o puedes agregar d.status si lo tienes
+        status: true, 
       };
     });
 

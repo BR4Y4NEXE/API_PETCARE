@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Thermometer, Droplets, Eye, Settings, Activity, Clock, Zap } from "lucide-react";
 
 // Tipos definidos correctamente
-type DHTData = {
+type DHTReading = {
   temperatura: number;
   humedad: number;
+  fechaHora: string;
 };
 
 type InfraredData = {
@@ -20,9 +21,11 @@ type LogEntry = {
 export default function Home() {
   const [infrared, setInfrared] = useState<InfraredData | null>(null);
   const [servoStatus, setServoStatus] = useState<boolean | null>(null);
-  const [dht, setDht] = useState<DHTData | null>(null);
+  const [dhtData, setDhtData] = useState<DHTReading[]>([]);
   const [log, setLog] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const latestDht = dhtData[0]; // Usamos solo el más reciente para la tarjeta
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -32,16 +35,16 @@ export default function Home() {
           fetch("/api/get-infrared"),
           fetch("/api/servo"),
           fetch("/api/get-servo-log")
-        ]);
+          ]);
 
         const [dhtData, infraredData, servoData, logData] = await Promise.all([
           dhtRes.json(),
           infraredRes.json(),
           servoRes.json(),
           logRes.json()
-        ]);
+          ]);
 
-        setDht(dhtData);
+        setDhtData(dhtData); 
         setInfrared(infraredData);
         setServoStatus(servoData.status);
         setLog(logData);
@@ -99,39 +102,40 @@ export default function Home() {
         {/* Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {/* DHT Sensor */}
-          <div className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6 hover:border-cyan-400/30 transition-all duration-300 hover:scale-105">
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-cyan-300">Sensor DHT</h2>
-                <div className="p-2 bg-cyan-500/20 rounded-xl">
-                  <Thermometer className="w-6 h-6 text-cyan-400" />
-                </div>
-              </div>
+          {/* Historial del DHT11 */}
+<div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6">
+  <div className="flex items-center space-x-3 mb-6">
+    <div className="p-2 bg-amber-500/20 rounded-xl">
+      <Clock className="w-6 h-6 text-amber-400" />
+    </div>
+    <h2 className="text-2xl font-semibold text-amber-300">Historial del Sensor DHT11</h2>
+  </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Thermometer className="w-4 h-4 text-red-400" />
-                    <span className="text-slate-300">Temperatura</span>
-                  </div>
-                  <span className="text-2xl font-bold text-white">
-                    {dht?.temperatura ?? "..."}<span className="text-lg text-slate-400">°C</span>
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Droplets className="w-4 h-4 text-blue-400" />
-                    <span className="text-slate-300">Humedad</span>
-                  </div>
-                  <span className="text-2xl font-bold text-white">
-                    {dht?.humedad ?? "..."}<span className="text-lg text-slate-400">%</span>
-                  </span>
-                </div>
-              </div>
-            </div>
+  <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
+    {dhtData.length > 0 ? (
+      dhtData.map((entry, idx) => (
+        <div 
+          key={idx}
+          className="flex items-center justify-between p-4 bg-slate-800/30 rounded-xl border border-white/5 hover:border-white/10 transition-colors"
+        >
+          <div>
+            <p className="text-white font-mono text-sm">{entry.fechaHora}</p>
           </div>
+          <div className="flex flex-col text-right text-sm">
+            <span className="text-red-400">🌡 {entry.temperatura} °C</span>
+            <span className="text-blue-400">💧 {entry.humedad} %</span>
+          </div>
+        </div>
+      ))
+    ) : (
+      <div className="text-center py-12">
+        <Clock className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+        <p className="text-slate-400">No hay historial del sensor aún</p>
+      </div>
+    )}
+  </div>
+</div>
+
 
           {/* Infrared Sensor */}
           <div className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6 hover:border-purple-400/30 transition-all duration-300 hover:scale-105">
