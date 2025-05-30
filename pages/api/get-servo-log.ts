@@ -1,7 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '../../lib/firebase';
-import { collection, getDocs } from "firebase/firestore";
-
 
 type ServoLog = {
   timestamp: string;
@@ -13,7 +11,7 @@ export default async function handler(
   res: NextApiResponse
 ) {
   try {
-    const snapshot = await getDocs(collection(db, "servo_log"));
+    const snapshot = await db.collection("servo_log").get();
     const data: ServoLog[] = snapshot.docs.map((doc) => {
       const d = doc.data() as ServoLog;
       return {
