@@ -1,11 +1,27 @@
 import { useEffect, useState } from "react";
 import { Thermometer, Droplets, Eye, Settings, Activity, Clock, Zap } from "lucide-react";
 
+// Tipos definidos correctamente
+type DHTData = {
+  temperatura: number;
+  humedad: number;
+};
+
+type InfraredData = {
+  estado: boolean;
+  fechaHora: string;
+};
+
+type LogEntry = {
+  timestamp: string;
+  status: boolean;
+};
+
 export default function Home() {
-  const [infrared, setInfrared] = useState<any>(null);
+  const [infrared, setInfrared] = useState<InfraredData | null>(null);
   const [servoStatus, setServoStatus] = useState<boolean | null>(null);
-  const [dht, setDht] = useState<any>(null);
-  const [log, setLog] = useState<any[]>([]);
+  const [dht, setDht] = useState<DHTData | null>(null);
+  const [log, setLog] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -82,7 +98,7 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* DHT Sensor Card */}
+          {/* DHT Sensor */}
           <div className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6 hover:border-cyan-400/30 transition-all duration-300 hover:scale-105">
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative">
@@ -92,7 +108,7 @@ export default function Home() {
                   <Thermometer className="w-6 h-6 text-cyan-400" />
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -103,7 +119,7 @@ export default function Home() {
                     {dht?.temperatura ?? "..."}<span className="text-lg text-slate-400">°C</span>
                   </span>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Droplets className="w-4 h-4 text-blue-400" />
@@ -117,7 +133,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Infrared Sensor Card */}
+          {/* Infrared Sensor */}
           <div className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6 hover:border-purple-400/30 transition-all duration-300 hover:scale-105">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative">
@@ -127,7 +143,7 @@ export default function Home() {
                   <Eye className="w-6 h-6 text-purple-400" />
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-300">Estado</span>
@@ -144,7 +160,7 @@ export default function Home() {
                     </span>
                   </div>
                 </div>
-                
+
                 <div>
                   <span className="text-slate-400 text-sm">Última detección:</span>
                   <p className="text-white font-mono text-sm mt-1">
@@ -155,7 +171,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Servo Control Card */}
+          {/* Servo Control */}
           <div className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6 hover:border-emerald-400/30 transition-all duration-300 hover:scale-105">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative">
@@ -165,7 +181,7 @@ export default function Home() {
                   <Settings className="w-6 h-6 text-emerald-400" />
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-300">Estado actual</span>
@@ -182,7 +198,7 @@ export default function Home() {
                     </span>
                   </div>
                 </div>
-                
+
                 <button
                   onClick={toggleServo}
                   className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 transition-all duration-300 rounded-xl font-semibold text-white shadow-lg hover:shadow-emerald-500/25 hover:scale-105 flex items-center justify-center space-x-2"
@@ -195,7 +211,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Activity Log */}
+        {/* Log de actividad */}
         <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6">
           <div className="flex items-center space-x-3 mb-6">
             <div className="p-2 bg-amber-500/20 rounded-xl">
@@ -203,9 +219,9 @@ export default function Home() {
             </div>
             <h2 className="text-2xl font-semibold text-amber-300">Historial de Actividad</h2>
           </div>
-          
+
           <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
-            {log?.length > 0 ? (
+            {log.length > 0 ? (
               log.map((entry, idx) => (
                 <div 
                   key={idx} 

@@ -1,9 +1,8 @@
-// lib/firebase.ts
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { Firestore, getFirestore } from 'firebase-admin/firestore'; // <-- Add getFirestore here
 
+let db: Firestore;
 
-let db:any;
 
 if (!getApps().length) {
   const serviceAccount = JSON.parse(
