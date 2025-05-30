@@ -3,7 +3,7 @@ import { db } from '../../lib/firebase';
 
 type ServoLog = {
   timestamp: string;
-  status: string;
+  status: boolean;
 };
 
 export default async function handler(
@@ -11,16 +11,22 @@ export default async function handler(
   res: NextApiResponse
 ) {
   try {
-    const snapshot = await db.collection("servo_log").get();
+    // 🔍 Consulta todos los documentos de subcolecciones llamadas "activaciones"
+    const snapshot = await db.collectionGroup("activaciones").get();
+
     const data: ServoLog[] = snapshot.docs.map((doc) => {
-      const d = doc.data() as ServoLog;
+      const d = doc.data();
       return {
-        timestamp: d.timestamp,
-        status: d.status,
+        // Asegúrate que sea una ISO string para el frontend
+        timestamp: d.fechaHoraAccionado || "",
+
+        // Si `status` no existe, puedes asumir algo o manejarlo con lógica adicional
+        status: true, // o puedes agregar d.status si lo tienes
       };
     });
 
-    res.status(200).json(data[0] || {});
+    // ✅ Devuelve todos los logs, no solo uno
+    res.status(200).json(data);
   } catch (error) {
     console.error("Error fetching servo logs:", error);
     res.status(500).json({ error: "Internal Server Error" });
