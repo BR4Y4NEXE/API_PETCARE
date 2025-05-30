@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "firebase": "^11.8.1",
     "firebase-admin": "^13.4.0",
     "lucide-react": "^0.511.0",
     "next": "15.3.2",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/firebase": "^2.4.32",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
