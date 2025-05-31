@@ -1,7 +1,7 @@
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-let db;
+let db = getFirestore();
 
 if (!getApps().length) {
   const rawKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
