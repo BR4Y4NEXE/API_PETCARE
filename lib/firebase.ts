@@ -1,34 +1,23 @@
+// lib/firebase.ts
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
-let db = getFirestore();
+const db: Firestore = (() => {
+  if (!getApps().length) {
+    const serviceAccount = JSON.parse(
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}'
+    );
 
-if (!getApps().length) {
-  const rawKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    if (!serviceAccount.project_id) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is missing or invalid.');
+    }
 
-  if (!rawKey) {
-    throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is not set.');
+    initializeApp({
+      credential: cert(serviceAccount),
+    });
   }
 
-  let serviceAccount;
+  return getFirestore();
+})();
 
-  try {
-    serviceAccount = JSON.parse(rawKey);
-  } catch (error) {
-    throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is not valid JSON.');
-  }
-
-  if (!serviceAccount.project_id || !serviceAccount.private_key) {
-    throw new Error('Missing fields in FIREBASE_SERVICE_ACCOUNT_KEY');
-  }
-
-  // ⬇️ Arreglar saltos de línea
-  serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-
-  initializeApp({
-    credential: cert(serviceAccount),
-  });
-}
-
-db = getFirestore();
 export { db };
