@@ -1,11 +1,27 @@
 import { useEffect, useState } from "react";
 import { Thermometer, Droplets, Eye, Settings, Activity, Clock, Zap } from "lucide-react";
 
+// Tipos definidos para los estados
+type DhtData = {
+  temperatura: number;
+  humedad: number;
+};
+
+type InfraredData = {
+  estado: boolean;
+  fechaHora: string;
+};
+
+type LogEntry = {
+  status: boolean;
+  timestamp: string;
+};
+
 export default function Home() {
-  const [infrared, setInfrared] = useState<any>(null);
+  const [infrared, setInfrared] = useState<InfraredData | null>(null);
   const [servoStatus, setServoStatus] = useState<boolean | null>(null);
-  const [dht, setDht] = useState<any>(null);
-  const [log, setLog] = useState<any[]>([]);
+  const [dht, setDht] = useState<DhtData | null>(null);
+  const [log, setLog] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -92,7 +108,7 @@ export default function Home() {
                   <Thermometer className="w-6 h-6 text-cyan-400" />
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -103,7 +119,7 @@ export default function Home() {
                     {dht?.temperatura ?? "..."}<span className="text-lg text-slate-400">°C</span>
                   </span>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Droplets className="w-4 h-4 text-blue-400" />
@@ -127,7 +143,7 @@ export default function Home() {
                   <Eye className="w-6 h-6 text-purple-400" />
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-300">Estado</span>
@@ -144,7 +160,7 @@ export default function Home() {
                     </span>
                   </div>
                 </div>
-                
+
                 <div>
                   <span className="text-slate-400 text-sm">Última detección:</span>
                   <p className="text-white font-mono text-sm mt-1">
@@ -165,7 +181,7 @@ export default function Home() {
                   <Settings className="w-6 h-6 text-emerald-400" />
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-300">Estado actual</span>
@@ -182,7 +198,7 @@ export default function Home() {
                     </span>
                   </div>
                 </div>
-                
+
                 <button
                   onClick={toggleServo}
                   className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 transition-all duration-300 rounded-xl font-semibold text-white shadow-lg hover:shadow-emerald-500/25 hover:scale-105 flex items-center justify-center space-x-2"
@@ -203,7 +219,7 @@ export default function Home() {
             </div>
             <h2 className="text-2xl font-semibold text-amber-300">Historial de Actividad</h2>
           </div>
-          
+
           <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
             {log?.length > 0 ? (
               log.map((entry, idx) => (
