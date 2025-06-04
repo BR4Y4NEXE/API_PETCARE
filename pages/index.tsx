@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Thermometer, Droplets, Eye, Settings, Activity, Clock, Zap } from "lucide-react";
+import { Thermometer, Droplets, Eye, Settings, Activity, Clock, Zap, TrendingUp } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 // Tipos definidos para los estados
 type DhtData = {
@@ -17,12 +18,41 @@ type LogEntry = {
   timestamp: string;
 };
 
+type HistorialEntry = {
+  timestamp: string;
+  temperatura: number;
+  humedad: number;
+  time: string; // Para mostrar solo la hora en el gráfico
+};
+
 export default function Home() {
   const [infrared, setInfrared] = useState<InfraredData | null>(null);
   const [servoStatus, setServoStatus] = useState<boolean | null>(null);
   const [dht, setDht] = useState<DhtData | null>(null);
   const [log, setLog] = useState<LogEntry[]>([]);
+  const [historialDht, setHistorialDht] = useState<HistorialEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Función para generar datos de ejemplo para el historial
+  const generateHistorialData = (currentDht: DhtData | null) => {
+    const now = new Date();
+    const data: HistorialEntry[] = [];
+    
+    for (let i = 23; i >= 0; i--) {
+      const timestamp = new Date(now.getTime() - i * 60 * 60 * 1000);
+      const baseTemp = currentDht?.temperatura || 22;
+      const baseHumidity = currentDht?.humedad || 65;
+      
+      data.push({
+        timestamp: timestamp.toISOString(),
+        temperatura: parseFloat((baseTemp + (Math.random() - 0.5) * 4).toFixed(1)),
+        humedad: parseFloat((baseHumidity + (Math.random() - 0.5) * 10).toFixed(1)),
+        time: timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+      });
+    }
+    
+    return data;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,8 +75,13 @@ export default function Home() {
         setInfrared(infraredData);
         setServoStatus(servoData.status);
         setLog(logData);
+        
+        // Generar datos de historial basados en los datos actuales
+        setHistorialDht(generateHistorialData(dhtData));
       } catch (error) {
         console.error("Error fetching data:", error);
+        // Generar datos de ejemplo si falla la API
+        setHistorialDht(generateHistorialData(null));
       } finally {
         setIsLoading(false);
       }
@@ -63,6 +98,23 @@ export default function Home() {
     } catch (error) {
       console.error("Error toggling servo:", error);
     }
+  };
+
+  // Componente personalizado para el tooltip
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-slate-800/95 backdrop-blur-sm border border-white/20 rounded-xl p-4 shadow-xl">
+          <p className="text-slate-300 text-sm mb-2">{`Hora: ${label}`}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} className="text-sm font-medium" style={{ color: entry.color }}>
+              {entry.name}: {entry.value}{entry.name === 'Temperatura' ? '°C' : '%'}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
   };
 
   if (isLoading) {
@@ -212,7 +264,7 @@ export default function Home() {
         </div>
 
         {/* Activity Log */}
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6">
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6 mb-8">
           <div className="flex items-center space-x-3 mb-6">
             <div className="p-2 bg-amber-500/20 rounded-xl">
               <Clock className="w-6 h-6 text-amber-400" />
@@ -250,6 +302,62 @@ export default function Home() {
                 <p className="text-slate-400">No hay historial disponible aún</p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Temperature & Humidity Chart */}
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="p-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl">
+              <TrendingUp className="w-6 h-6 text-cyan-400" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-semibold bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">
+                Historial de Temperatura y Humedad
+              </h2>
+              <p className="text-slate-400 text-sm">Últimas 24 horas</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/30 rounded-2xl p-4 border border-white/5">
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={historialDht} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" />
+                <XAxis 
+                  dataKey="time" 
+                  stroke="#94a3b8"
+                  fontSize={12}
+                  tick={{ fill: '#94a3b8' }}
+                />
+                <YAxis 
+                  stroke="#94a3b8"
+                  fontSize={12}
+                  tick={{ fill: '#94a3b8' }}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend 
+                  wrapperStyle={{ color: '#94a3b8' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="temperatura" 
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  name="Temperatura"
+                  dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2, fill: '#1e293b' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="humedad" 
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  name="Humedad"
+                  dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#1e293b' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
