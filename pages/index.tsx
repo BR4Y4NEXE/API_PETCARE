@@ -100,13 +100,26 @@ export default function Home() {
     }
   };
 
+  // Tipos para el tooltip personalizado
+  interface TooltipPayload {
+    color: string;
+    name: string;
+    value: number;
+  }
+
+  interface CustomTooltipProps {
+    active?: boolean;
+    payload?: TooltipPayload[];
+    label?: string;
+  }
+
   // Componente personalizado para el tooltip
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-slate-800/95 backdrop-blur-sm border border-white/20 rounded-xl p-4 shadow-xl">
           <p className="text-slate-300 text-sm mb-2">{`Hora: ${label}`}</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index) => (
             <p key={index} className="text-sm font-medium" style={{ color: entry.color }}>
               {entry.name}: {entry.value}{entry.name === 'Temperatura' ? '°C' : '%'}
             </p>
