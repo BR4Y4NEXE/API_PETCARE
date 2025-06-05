@@ -33,25 +33,16 @@ export default function Home() {
   const [historialDht, setHistorialDht] = useState<HistorialEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Función para generar datos de ejemplo para el historial
-  const generateHistorialData = (currentDht: DhtData | null) => {
-    const now = new Date();
-    const data: HistorialEntry[] = [];
-    
-    for (let i = 23; i >= 0; i--) {
-      const timestamp = new Date(now.getTime() - i * 60 * 60 * 1000);
-      const baseTemp = currentDht?.temperatura || 22;
-      const baseHumidity = currentDht?.humedad || 65;
-      
-      data.push({
-        timestamp: timestamp.toISOString(),
-        temperatura: parseFloat((baseTemp + (Math.random() - 0.5) * 4).toFixed(1)),
-        humedad: parseFloat((baseHumidity + (Math.random() - 0.5) * 10).toFixed(1)),
-        time: timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-      });
+  // Función para obtener el historial de DHT desde la API
+  const fetchDhtHistory = async () => {
+    try {
+      const response = await fetch('/api/get-dht-history');
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching DHT history:', error);
+      return [];
     }
-    
-    return data;
   };
 
   useEffect(() => {
@@ -76,12 +67,13 @@ export default function Home() {
         setServoStatus(servoData.status);
         setLog(logData);
         
-        // Generar datos de historial basados en los datos actuales
-        setHistorialDht(generateHistorialData(dhtData));
+        // Obtener historial real de DHT
+        const historialData = await fetchDhtHistory();
+        setHistorialDht(historialData);
       } catch (error) {
         console.error("Error fetching data:", error);
-        // Generar datos de ejemplo si falla la API
-        setHistorialDht(generateHistorialData(null));
+        // En caso de error, usar datos vacíos
+        setHistorialDht([]);
       } finally {
         setIsLoading(false);
       }
