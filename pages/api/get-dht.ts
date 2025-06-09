@@ -10,42 +10,35 @@ type DHTReading = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // 🔍 Usar collectionGroup para obtener todas las lecturas del DHT11
-    const snapshot = await db.collectionGroup("lecturas")
-      .where("temperatura", "!=", null) // Filtrar solo documentos de DHT11
-      .get();
+    const rootSnapshot = await db.collection("dht11").get();
+    const allReadings: DHTReading[] = [];
 
-    const allReadings: DHTReading[] = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        temperatura: data.temperatura || 0,
-        humedad: data.humedad || 0,
-        fechaHora: data.fechaHora || "",
-      };
-    })
-    .filter(reading => reading.fechaHora !== "" && reading.temperatura !== 0)
-    .sort((a, b) => {
-      // Ordenar por fechaHora (más recientes primero)
-      const dateA = new Date(a.fechaHora.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
-      const dateB = new Date(b.fechaHora.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
-      return dateB.getTime() - dateA.getTime();
-    });
+    for (const doc of rootSnapshot.docs) {
+      const subSnapshot = await db
+        .collection("dht11")
+        .doc(doc.id)
+        .collection("lecturas")
+        .orderBy("fechaHora", "desc")
+        .get();
 
-    console.log(`DHT Current: Found ${allReadings.length} total readings`);
-
-    // Devolver solo los datos más recientes (primer elemento del array ordenado)
-    if (allReadings.length > 0) {
-      const mostRecent = allReadings[0];
-      res.status(200).json({
-        temperatura: mostRecent.temperatura,
-        humedad: mostRecent.humedad
+      subSnapshot.forEach((subDoc: FirebaseFirestore.QueryDocumentSnapshot) => {
+        const data = subDoc.data();
+        if (data?.temperatura != null && data?.humedad != null && data?.fechaHora) {
+          allReadings.push({
+            temperatura: data.temperatura,
+            humedad: data.humedad,
+            fechaHora: data.fechaHora,
+          });
+        }
       });
-    } else {
-      // Si no hay datos, devolver null para que el frontend maneje el caso
-      res.status(200).json(null);
     }
+
+    // Ordenar todas las lecturas por fechaHora (más recientes primero)
+    allReadings.sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime());
+
+    res.status(200).json(allReadings);
   } catch (err) {
-    console.error("Error fetching current DHT data:", err);
+    console.error("Error fetching DHT data:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 }

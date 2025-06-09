@@ -33,10 +33,15 @@ export default function Home() {
   const [historialDht, setHistorialDht] = useState<HistorialEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const baseUrl =
+  process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : 'https://api-pet-care-rc52.vercel.app';
+
   // Función para obtener el historial de DHT desde la API
   const fetchDhtHistory = async () => {
     try {
-      const response = await fetch('/api/get-dht-history');
+      const response = await fetch('${baseUrl}/api/get-dht-history');
       const data = await response.json();
       return data;
     } catch (error) {
@@ -48,7 +53,7 @@ export default function Home() {
   // Función para obtener los datos más recientes del DHT
   const fetchDhtCurrent = async () => {
     try {
-      const response = await fetch('/api/get-dht');
+      const response = await fetch('${baseUrl}/api/get-dht');
       const data = await response.json();
       return data;
     } catch (error) {
@@ -61,9 +66,9 @@ export default function Home() {
     const fetchData = async () => {
       try {
         const [infraredRes, servoRes, servoLogRes] = await Promise.all([
-          fetch("/api/get-infrared"),
-          fetch("/api/servo"),
-          fetch("/api/get-servo-log")
+          fetch("${baseUrl}/api/get-infrared"),
+          fetch("${baseUrl}/api/servo"),
+          fetch("${baseUrl}/api/get-servo-log")
         ]);
 
         const [infraredData, servoData, servoLogData] = await Promise.all([
@@ -98,7 +103,7 @@ export default function Home() {
 
   const toggleServo = async () => {
     try {
-      const res = await fetch("/api/servo", { method: "POST" });
+      const res = await fetch("${baseUrl}/api/servo", { method: "POST" });
       const data = await res.json();
       setServoStatus(data.status);
     } catch (error) {
@@ -174,7 +179,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-cyan-300">Sensor DHT</h2>
+                <h2 className="text-xl font-semibold text-cyan-300">Monitor de Temperatura y Humedad</h2>
                 <div className="p-2 bg-cyan-500/20 rounded-xl">
                   <Thermometer className="w-6 h-6 text-cyan-400" />
                 </div>
@@ -209,7 +214,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-purple-300">Sensor Infrarrojo</h2>
+                <h2 className="text-xl font-semibold text-purple-300">Disponibilidad de Alimento</h2>
                 <div className="p-2 bg-purple-500/20 rounded-xl">
                   <Eye className="w-6 h-6 text-purple-400" />
                 </div>
@@ -231,13 +236,6 @@ export default function Home() {
                     </span>
                   </div>
                 </div>
-
-                <div>
-                  <span className="text-slate-400 text-sm">Última detección:</span>
-                  <p className="text-white font-mono text-sm mt-1">
-                    {infrared?.fechaHora ?? "Sin registros"}
-                  </p>
-                </div>
               </div>
             </div>
           </div>
@@ -247,7 +245,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-emerald-300">Control Servomotor</h2>
+                <h2 className="text-xl font-semibold text-emerald-300">Control de Alimento</h2>
                 <div className="p-2 bg-emerald-500/20 rounded-xl">
                   <Settings className="w-6 h-6 text-emerald-400" />
                 </div>
@@ -255,19 +253,7 @@ export default function Home() {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-300">Estado actual</span>
-                  <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
-                    servoStatus 
-                      ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-red-500/20 text-red-400'
-                  }`}>
-                    <div className={`w-2 h-2 rounded-full ${
-                      servoStatus ? 'bg-green-400' : 'bg-red-400'
-                    }`}></div>
-                    <span className="text-sm font-medium">
-                      {servoStatus ? "Abierto" : "Cerrado"}
-                    </span>
-                  </div>
+                  
                 </div>
 
                 <button
@@ -275,7 +261,7 @@ export default function Home() {
                   className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 transition-all duration-300 rounded-xl font-semibold text-white shadow-lg hover:shadow-emerald-500/25 hover:scale-105 flex items-center justify-center space-x-2"
                 >
                   <Zap className="w-4 h-4" />
-                  <span>Cambiar Estado</span>
+                  <span>Dispensar</span>
                 </button>
               </div>
             </div>
