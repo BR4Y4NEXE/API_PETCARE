@@ -31,6 +31,7 @@ export default function Home() {
   const [log, setLog] = useState<LogEntry[]>([]);
   const [historialDht, setHistorialDht] = useState<HistorialEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDispensing, setIsDispensing] = useState(false);
 
   // Función para obtener el historial de DHT desde la API
   const fetchDhtHistory = async () => {
@@ -44,20 +45,29 @@ export default function Home() {
     }
   };
 
+  // Función para actualizar el log después de activar el servo
+  const refreshLog = async () => {
+    try {
+      const logRes = await fetch("/api/get-servo-log");
+      const logData = await logRes.json();
+      setLog(logData);
+    } catch (error) {
+      console.error("Error refreshing log:", error);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dhtRes, infraredRes, servoRes, logRes] = await Promise.all([
+        const [dhtRes, infraredRes, logRes] = await Promise.all([
           fetch("/api/get-dht"),
           fetch("/api/get-infrared"),
-          fetch("/api/servo"),
           fetch("/api/get-servo-log")
         ]);
 
-        const [dhtData, infraredData, servoData, logData] = await Promise.all([
+        const [dhtData, infraredData, logData] = await Promise.all([
           dhtRes.json(),
           infraredRes.json(),
-          servoRes.json(),
           logRes.json()
         ]);
 
@@ -80,7 +90,24 @@ export default function Home() {
     fetchData();
   }, []);
 
-  
+  const toggleServo = async () => {
+    setIsDispensing(true);
+    try {
+      const res = await fetch("/api/servo", { method: "POST" });
+      const data = await res.json();
+      
+      if (data.success) {
+        // Actualizar el log después de un breve retraso
+        setTimeout(() => {
+          refreshLog();
+        }, 1000);
+      }
+    } catch (error) {
+      console.error("Error toggling servo:", error);
+    } finally {
+      setIsDispensing(false);
+    }
+  };
 
   // Tipos para el tooltip personalizado
   interface TooltipPayload {
@@ -207,8 +234,6 @@ export default function Home() {
                     </span>
                   </div>
                 </div>
-
-                
               </div>
             </div>
           </div>
@@ -225,13 +250,26 @@ export default function Home() {
               </div>
 
               <div className="space-y-4">
-                
-
                 <button
-                  className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 transition-all duration-300 rounded-xl font-semibold text-white shadow-lg hover:shadow-emerald-500/25 hover:scale-105 flex items-center justify-center space-x-2"
+                  onClick={toggleServo}
+                  disabled={isDispensing}
+                  className={`w-full mt-4 px-4 py-3 ${
+                    isDispensing 
+                      ? 'bg-gray-600 cursor-not-allowed' 
+                      : 'bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 hover:scale-105'
+                  } transition-all duration-300 rounded-xl font-semibold text-white shadow-lg hover:shadow-emerald-500/25 flex items-center justify-center space-x-2`}
                 >
-                  <Zap className="w-4 h-4" />
-                  <span>Dispensar</span>
+                  {isDispensing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      <span>Dispensando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4" />
+                      <span>Dispensar</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
