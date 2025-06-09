@@ -34,25 +34,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Ordenar todas las lecturas por fechaHora (más recientes primero)
-    allReadings.sort((a, b) => {
-      const dateA = new Date(a.fechaHora.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
-      const dateB = new Date(b.fechaHora.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
-      return dateB.getTime() - dateA.getTime();
-    });
+    allReadings.sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime());
 
-    console.log(`DHT Data: Found ${allReadings.length} total readings`);
-
-    // Devolver solo los datos más recientes (primer elemento del array ordenado)
-    if (allReadings.length > 0) {
-      const mostRecent = allReadings[0];
-      res.status(200).json({
-        temperatura: mostRecent.temperatura,
-        humedad: mostRecent.humedad
-      });
-    } else {
-      // Si no hay datos, devolver null para que el frontend maneje el caso
-      res.status(200).json(null);
-    }
+    res.status(200).json(allReadings);
   } catch (err) {
     console.error("Error fetching DHT data:", err);
     res.status(500).json({ error: "Internal server error" });
