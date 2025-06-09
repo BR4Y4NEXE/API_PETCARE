@@ -13,9 +13,9 @@ type InfraredData = {
   fechaHora: string;
 };
 
-type LogEntry = {
-  status: boolean;
+type ServoLogEntry = {
   timestamp: string;
+  status: boolean;
 };
 
 type HistorialEntry = {
@@ -29,7 +29,7 @@ export default function Home() {
   const [infrared, setInfrared] = useState<InfraredData | null>(null);
   const [servoStatus, setServoStatus] = useState<boolean | null>(null);
   const [dht, setDht] = useState<DhtData | null>(null);
-  const [log, setLog] = useState<LogEntry[]>([]);
+  const [servoLog, setServoLog] = useState<ServoLogEntry[]>([]);
   const [historialDht, setHistorialDht] = useState<HistorialEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -45,35 +45,49 @@ export default function Home() {
     }
   };
 
+  // Función para obtener los datos más recientes del DHT
+  const fetchDhtCurrent = async () => {
+    try {
+      const response = await fetch('/api/get-dht');
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching current DHT data:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dhtRes, infraredRes, servoRes, logRes] = await Promise.all([
-          fetch("/api/get-dht"),
+        const [infraredRes, servoRes, servoLogRes] = await Promise.all([
           fetch("/api/get-infrared"),
           fetch("/api/servo"),
           fetch("/api/get-servo-log")
         ]);
 
-        const [dhtData, infraredData, servoData, logData] = await Promise.all([
-          dhtRes.json(),
+        const [infraredData, servoData, servoLogData] = await Promise.all([
           infraredRes.json(),
           servoRes.json(),
-          logRes.json()
+          servoLogRes.json()
         ]);
 
-        setDht(dhtData);
         setInfrared(infraredData);
         setServoStatus(servoData.status);
-        setLog(logData);
+        setServoLog(servoLogData);
         
-        // Obtener historial real de DHT
+        // Obtener datos actuales del DHT (más recientes)
+        const currentDhtData = await fetchDhtCurrent();
+        setDht(currentDhtData);
+        
+        // Obtener historial completo de DHT para el gráfico
         const historialData = await fetchDhtHistory();
         setHistorialDht(historialData);
       } catch (error) {
         console.error("Error fetching data:", error);
         // En caso de error, usar datos vacíos
         setHistorialDht([]);
+        setServoLog([]);
       } finally {
         setIsLoading(false);
       }
@@ -268,7 +282,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Activity Log */}
+        {/* Activity Log - AHORA MUESTRA SERVO LOG */}
         <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6 mb-8">
           <div className="flex items-center space-x-3 mb-6">
             <div className="p-2 bg-amber-500/20 rounded-xl">
@@ -278,8 +292,8 @@ export default function Home() {
           </div>
 
           <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
-            {log?.length > 0 ? (
-              log.map((entry, idx) => (
+            {servoLog?.length > 0 ? (
+              servoLog.map((entry, idx) => (
                 <div 
                   key={idx} 
                   className="flex items-center justify-between p-4 bg-slate-800/30 rounded-xl border border-white/5 hover:border-white/10 transition-colors"
@@ -297,7 +311,7 @@ export default function Home() {
                       ? 'bg-green-500/20 text-green-400' 
                       : 'bg-red-500/20 text-red-400'
                   }`}>
-                    <span>{entry.status ? "Abierto" : "Cerrado"}</span>
+                    <span>{entry.status ? "Activado" : "Desactivado"}</span>
                   </div>
                 </div>
               ))
@@ -310,7 +324,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Temperature & Humidity Chart */}
+        {/* Temperature & Humidity Chart - USA GET-DHT-HISTORY */}
         <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6">
           <div className="flex items-center space-x-3 mb-6">
             <div className="p-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl">
@@ -320,49 +334,57 @@ export default function Home() {
               <h2 className="text-2xl font-semibold bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">
                 Historial de Temperatura y Humedad
               </h2>
-              <p className="text-slate-400 text-sm">Últimas 24 horas</p>
+              <p className="text-slate-400 text-sm">Historial completo de lecturas</p>
             </div>
           </div>
 
           <div className="bg-slate-900/30 rounded-2xl p-4 border border-white/5">
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={historialDht} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" />
-                <XAxis 
-                  dataKey="time" 
-                  stroke="#94a3b8"
-                  fontSize={12}
-                  tick={{ fill: '#94a3b8' }}
-                />
-                <YAxis 
-                  stroke="#94a3b8"
-                  fontSize={12}
-                  tick={{ fill: '#94a3b8' }}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend 
-                  wrapperStyle={{ color: '#94a3b8' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="temperatura" 
-                  stroke="#ef4444"
-                  strokeWidth={2}
-                  name="Temperatura"
-                  dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2, fill: '#1e293b' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="humedad" 
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  name="Humedad"
-                  dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#1e293b' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {historialDht.length > 0 ? (
+              <ResponsiveContainer width="100%" height={400}>
+                <LineChart data={historialDht} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" />
+                  <XAxis 
+                    dataKey="time" 
+                    stroke="#94a3b8"
+                    fontSize={12}
+                    tick={{ fill: '#94a3b8' }}
+                  />
+                  <YAxis 
+                    stroke="#94a3b8"
+                    fontSize={12}
+                    tick={{ fill: '#94a3b8' }}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend 
+                    wrapperStyle={{ color: '#94a3b8' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="temperatura" 
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    name="Temperatura"
+                    dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2, fill: '#1e293b' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="humedad" 
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    name="Humedad"
+                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#1e293b' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-center py-12">
+                <TrendingUp className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+                <p className="text-slate-400">No hay datos suficientes para mostrar el gráfico</p>
+                <p className="text-slate-500 text-sm mt-2">Se necesitan al menos 2 lecturas para generar el gráfico</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
