@@ -33,15 +33,10 @@ export default function Home() {
   const [historialDht, setHistorialDht] = useState<HistorialEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const baseUrl =
-  process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000'
-    : 'https://api-pet-care-rc52.vercel.app';
-
   // Función para obtener el historial de DHT desde la API
   const fetchDhtHistory = async () => {
     try {
-      const response = await fetch('${baseUrl}/api/get-dht-history');
+      const response = await fetch('https://api-pet-care-rc52.vercel.app/api/get-dht-history');
       const data = await response.json();
       return data;
     } catch (error) {
@@ -53,7 +48,7 @@ export default function Home() {
   // Función para obtener los datos más recientes del DHT
   const fetchDhtCurrent = async () => {
     try {
-      const response = await fetch('${baseUrl}/api/get-dht');
+      const response = await fetch('https://api-pet-care-rc52.vercel.app/api/get-dht');
       const data = await response.json();
       return data;
     } catch (error) {
@@ -66,9 +61,9 @@ export default function Home() {
     const fetchData = async () => {
       try {
         const [infraredRes, servoRes, servoLogRes] = await Promise.all([
-          fetch("${baseUrl}/api/get-infrared"),
-          fetch("${baseUrl}/api/servo"),
-          fetch("${baseUrl}/api/get-servo-log")
+          fetch("/api/get-infrared"),
+          fetch("/api/servo"),
+          fetch("/api/get-servo-log")
         ]);
 
         const [infraredData, servoData, servoLogData] = await Promise.all([
@@ -103,7 +98,7 @@ export default function Home() {
 
   const toggleServo = async () => {
     try {
-      const res = await fetch("${baseUrl}/api/servo", { method: "POST" });
+      const res = await fetch("https://api-pet-care-rc52.vercel.app/api/servo", { method: "POST" });
       const data = await res.json();
       setServoStatus(data.status);
     } catch (error) {
