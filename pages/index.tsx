@@ -27,7 +27,6 @@ type HistorialEntry = {
 
 export default function Home() {
   const [infrared, setInfrared] = useState<InfraredData | null>(null);
-  const [servoStatus, setServoStatus] = useState<boolean | null>(null);
   const [dht, setDht] = useState<DhtData | null>(null);
   const [log, setLog] = useState<LogEntry[]>([]);
   const [historialDht, setHistorialDht] = useState<HistorialEntry[]>([]);
@@ -64,7 +63,6 @@ export default function Home() {
 
         setDht(dhtData);
         setInfrared(infraredData);
-        setServoStatus(servoData.status);
         setLog(logData);
         
         // Obtener historial real de DHT
@@ -86,7 +84,6 @@ export default function Home() {
     try {
       const res = await fetch("/api/servo", { method: "POST" });
       const data = await res.json();
-      setServoStatus(data.status);
     } catch (error) {
       console.error("Error toggling servo:", error);
     }
