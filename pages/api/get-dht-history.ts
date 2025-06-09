@@ -29,16 +29,19 @@ export default async function handler(
         timestamp: fechaHora,
         temperatura: d.temperatura || 0,
         humedad: d.humedad || 0,
-        time: time // Solo la hora para el eje X del gráfico
+        time: time.substring(0, 5) // Solo HH:MM para el gráfico
       };
     })
-    .filter(entry => entry.timestamp !== "") // Filtrar entradas sin timestamp
+    .filter(entry => entry.timestamp !== "" && entry.temperatura !== 0) // Filtrar entradas inválidas
     .sort((a, b) => {
-      // Ordenar por timestamp (más reciente primero para luego reversar)
+      // Ordenar por timestamp (cronológicamente)
       const dateA = new Date(a.timestamp.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
       const dateB = new Date(b.timestamp.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
       return dateA.getTime() - dateB.getTime();
     });
+
+    console.log(`DHT History: Found ${data.length} records`);
+    console.log('Sample data:', data.slice(0, 2)); // Mostrar primeros 2 registros para debug
 
     // ✅ Devuelve todos los datos históricos del DHT11
     res.status(200).json(data);
