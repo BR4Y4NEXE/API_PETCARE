@@ -1,48 +1,39 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { db } from "../../lib/firebase";
+import { db } from '../../lib/firebase';
+import { NextApiRequest, NextApiResponse } from 'next';
 
-type InfraredReading = {
-  estado: boolean;
-  fechaHora: string;
-};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
   try {
-    const rootSnapshot = await db.collection("sensor_infrarrojo").get();
-    let latestReading: InfraredReading | null = null;
-    let latestTimestamp = 0;
-
-    for (const doc of rootSnapshot.docs) {
-      const subSnapshot = await db
-        .collection("sensor_infrarrojo")
-        .doc(doc.id)
-        .collection("lecturas")
-        .orderBy("timestamp", "desc")
-        .limit(1)
-        .get();
-
-      subSnapshot.forEach((subDoc: FirebaseFirestore.QueryDocumentSnapshot) => {
-        const data = subDoc.data();
-        if (data?.disponibilidad != null && data?.timestamp) {
-          const timestamp = new Date(data.timestamp).getTime();
-          if (timestamp > latestTimestamp) {
-            latestTimestamp = timestamp;
-            latestReading = {
-              estado: data.disponibilidad,
-              fechaHora: data.timestamp,
-            };
-          }
-        }
-      });
+    const today = new Date().toLocaleDateString('en-CA');
+    const infraredRef = db.collection('sensor_infrarrojo').doc(today).collection('lecturas');
+    const snapshot = await infraredRef.orderBy('timestamp', 'desc').limit(1).get();
+    
+    if (snapshot.empty) {
+      return res.status(200).json({ estado: false, fechaHora: null });
     }
 
-    if (latestReading) {
-      res.status(200).json(latestReading);
-    } else {
-      res.status(404).json({ error: "No infrared data found" });
-    }
-  } catch (err) {
-    console.error("Error fetching infrared data:", err);
-    res.status(500).json({ error: "Internal server error" });
+    const latestReading = snapshot.docs[0].data();
+    
+    // Convertir timestamp ISO a formato legible
+    const fechaHora = new Date(latestReading.timestamp).toLocaleString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+
+    res.status(200).json({
+      estado: latestReading.disponibilidad,
+      fechaHora: fechaHora
+    });
+  } catch (error) {
+    console.error('Error fetching infrared data:', error);
+    res.status(500).json({ error: 'Failed to fetch infrared data' });
   }
 }

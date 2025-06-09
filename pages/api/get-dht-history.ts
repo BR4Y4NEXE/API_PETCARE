@@ -1,61 +1,37 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { db } from "../../lib/firebase";
-
-type HistorialEntry = {
-  timestamp: string;
-  temperatura: number;
-  humedad: number;
-  time: string;
-};
+// pages/api/get-dht-history.ts
+import { NextApiRequest, NextApiResponse } from 'next';
+import { db } from '../../lib/firebase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
   try {
-    const rootSnapshot = await db.collection("dht11").get();
-    const allReadings: HistorialEntry[] = [];
-
-    for (const doc of rootSnapshot.docs) {
-      const subSnapshot = await db
-        .collection("dht11")
-        .doc(doc.id)
-        .collection("lecturas")
-        .orderBy("fechaHora", "desc")
-        .get();
-
-      subSnapshot.forEach((subDoc: FirebaseFirestore.QueryDocumentSnapshot) => {
-        const data = subDoc.data();
-        if (data?.temperatura != null && data?.humedad != null && data?.fechaHora) {
-          // Convertir fecha al formato ISO para timestamp
-          const fecha = new Date(data.fechaHora);
-          const timestamp = fecha.toISOString();
-          
-          // Extraer solo la hora para el gráfico
-          const time = fecha.toLocaleTimeString('es-ES', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          });
-
-          allReadings.push({
-            timestamp: timestamp,
-            temperatura: data.temperatura,
-            humedad: data.humedad,
-            time: time,
-          });
-        }
-      });
+    const today = new Date().toLocaleDateString('en-CA'); // Formato: YYYY-MM-DD
+    const dhtRef = db.collection('dht11').doc(today).collection('lecturas');
+    
+    // Obtener las últimas 20 lecturas para la gráfica
+    const snapshot = await dhtRef.orderBy('fechaHora', 'desc').limit(20).get();
+    
+    if (snapshot.empty) {
+      return res.status(200).json({ data: [] });
     }
 
-    // Ordenar por timestamp (más antiguos primero para el gráfico)
-    allReadings.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const readings = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        temperatura: data.temperatura,
+        humedad: data.humedad,
+        fechaHora: data.fechaHora,
+        // Extraer solo la hora para mostrar en la gráfica
+        hora: data.fechaHora ? data.fechaHora.split(' ')[1]?.substring(0, 5) : ''
+      };
+    }).reverse(); // Invertir para mostrar cronológicamente
 
-    // Filtrar últimas 24 horas
-    const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
-    const recentReadings = allReadings.filter(reading => 
-      new Date(reading.timestamp).getTime() > twentyFourHoursAgo
-    );
-
-    res.status(200).json(recentReadings);
-  } catch (err) {
-    console.error("Error fetching DHT history:", err);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(200).json({ data: readings });
+  } catch (error) {
+    console.error('Error fetching DHT history:', error);
+    res.status(500).json({ error: 'Failed to fetch DHT history' });
   }
 }

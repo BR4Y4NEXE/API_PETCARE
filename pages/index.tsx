@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Thermometer, Droplets, Eye, Settings, Activity, Clock, Zap, TrendingUp } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Thermometer, Droplets, Eye, Settings, Activity, Zap } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-// Tipos definidos para los estados
+// Tipos simplificados
 type DhtData = {
   temperatura: number;
   humedad: number;
@@ -13,124 +13,78 @@ type InfraredData = {
   fechaHora: string;
 };
 
-type LogEntry = {
-  status: boolean;
-  timestamp: string;
-};
-
-type HistorialEntry = {
-  timestamp: string;
+type DhtHistoryData = {
   temperatura: number;
   humedad: number;
-  time: string; // Para mostrar solo la hora en el gráfico
+  fechaHora: string;
+  hora: string;
 };
 
-export default function Home() {
+export default function SimpleDashboard() {
   const [infrared, setInfrared] = useState<InfraredData | null>(null);
+  const [servoStatus, setServoStatus] = useState<boolean | null>(null);
   const [dht, setDht] = useState<DhtData | null>(null);
-  const [log, setLog] = useState<LogEntry[]>([]);
-  const [historialDht, setHistorialDht] = useState<HistorialEntry[]>([]);
+  const [dhtHistory, setDhtHistory] = useState<DhtHistoryData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDispensing, setIsDispensing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<string>("");
 
-  // Función para obtener el historial de DHT desde la API
-  const fetchDhtHistory = async () => {
+  // Función para obtener todos los datos
+  const fetchData = async () => {
     try {
-      const response = await fetch('/api/get-dht-history');
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Error fetching DHT history:', error);
-      return [];
-    }
-  };
+      const [dhtRes, infraredRes, servoRes, dhtHistoryRes] = await Promise.all([
+        fetch("/api/get-dht"),
+        fetch("/api/get-infrared"),
+        fetch("/api/servo"),
+        fetch("/api/get-dht-history")
+      ]);
 
-  // Función para actualizar el log después de activar el servo
-  const refreshLog = async () => {
-    try {
-      const logRes = await fetch("/api/get-servo-log");
-      const logData = await logRes.json();
-      setLog(logData);
+      const [dhtData, infraredData, servoData, dhtHistoryData] = await Promise.all([
+        dhtRes.json(),
+        infraredRes.json(),
+        servoRes.json(),
+        dhtHistoryRes.json()
+      ]);
+
+      setDht(dhtData);
+      setInfrared(infraredData);
+      setServoStatus(servoData.status);
+      setDhtHistory(dhtHistoryData.data || []);
+      setLastUpdate(new Date().toLocaleTimeString());
     } catch (error) {
-      console.error("Error refreshing log:", error);
+      console.error("Error fetching data:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [dhtRes, infraredRes, logRes] = await Promise.all([
-          fetch("/api/get-dht"),
-          fetch("/api/get-infrared"),
-          fetch("/api/get-servo-log")
-        ]);
-
-        const [dhtData, infraredData, logData] = await Promise.all([
-          dhtRes.json(),
-          infraredRes.json(),
-          logRes.json()
-        ]);
-
-        setDht(dhtData);
-        setInfrared(infraredData);
-        setLog(logData);
-        
-        // Obtener historial real de DHT
-        const historialData = await fetchDhtHistory();
-        setHistorialDht(historialData);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        // En caso de error, usar datos vacíos
-        setHistorialDht([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchData();
+    // Actualizar datos cada 30 segundos
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const toggleServo = async () => {
-    setIsDispensing(true);
     try {
       const res = await fetch("/api/servo", { method: "POST" });
       const data = await res.json();
-      
-      if (data.success) {
-        // Actualizar el log después de un breve retraso
-        setTimeout(() => {
-          refreshLog();
-        }, 1000);
-      }
+      setServoStatus(data.status);
+      // Actualizar después de dispensar
+      setTimeout(fetchData, 1000);
     } catch (error) {
       console.error("Error toggling servo:", error);
-    } finally {
-      setIsDispensing(false);
     }
   };
 
-  // Tipos para el tooltip personalizado
-  interface TooltipPayload {
-    color: string;
-    name: string;
-    value: number;
-  }
-
-  interface CustomTooltipProps {
-    active?: boolean;
-    payload?: TooltipPayload[];
-    label?: string;
-  }
-
-  // Componente personalizado para el tooltip
-  const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  // Componente personalizado para el tooltip de la gráfica
+  const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-slate-800/95 backdrop-blur-sm border border-white/20 rounded-xl p-4 shadow-xl">
+        <div className="bg-slate-800/90 backdrop-blur-sm border border-white/20 rounded-lg p-3 shadow-lg">
           <p className="text-slate-300 text-sm mb-2">{`Hora: ${label}`}</p>
-          {payload.map((entry, index) => (
-            <p key={index} className="text-sm font-medium" style={{ color: entry.color }}>
-              {entry.name}: {entry.value}{entry.name === 'Temperatura' ? '°C' : '%'}
+          {payload.map((entry: any, index: number) => (
+            <p key={index} className="text-sm" style={{ color: entry.color }}>
+              {`${entry.dataKey === 'temperatura' ? 'Temperatura' : 'Humedad'}: ${entry.value}${entry.dataKey === 'temperatura' ? '°C' : '%'}`}
             </p>
           ))}
         </div>
@@ -141,256 +95,192 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-purple-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-cyan-400 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-cyan-300 text-lg">Cargando datos del sistema...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-cyan-400 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-cyan-300">Cargando...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-purple-900 text-white p-4">
       {/* Header */}
-      <div className="backdrop-blur-sm bg-black/20 border-b border-white/10 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-xl">
-              <Activity className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                PetCare Dashboard
-              </h1>
-              <p className="text-slate-400 text-sm">Monitoreo en tiempo real del sistema</p>
-            </div>
-          </div>
+      <div className="text-center mb-8">
+        <div className="flex items-center justify-center space-x-3 mb-2">
+          <Activity className="w-8 h-8 text-cyan-400" />
+          <h1 className="text-3xl font-bold text-cyan-400">PetCare Monitor</h1>
         </div>
+        <p className="text-slate-400 text-sm">
+          Última actualización: {lastUpdate}
+        </p>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* DHT Sensor Card */}
-          <div className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6 hover:border-cyan-400/30 transition-all duration-300 hover:scale-105">
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-cyan-300">Monitoreo de Temperatura y Humedad</h2>
-                <div className="p-2 bg-cyan-500/20 rounded-xl">
-                  <Thermometer className="w-6 h-6 text-cyan-400" />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Thermometer className="w-4 h-4 text-red-400" />
-                    <span className="text-slate-300">Temperatura</span>
-                  </div>
-                  <span className="text-2xl font-bold text-white">
-                    {dht?.temperatura ?? "..."}<span className="text-lg text-slate-400">°C</span>
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Droplets className="w-4 h-4 text-blue-400" />
-                    <span className="text-slate-300">Humedad</span>
-                  </div>
-                  <span className="text-2xl font-bold text-white">
-                    {dht?.humedad ?? "..."}<span className="text-lg text-slate-400">%</span>
-                  </span>
-                </div>
-              </div>
-            </div>
+      {/* Cards Grid */}
+      <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        
+        {/* Temperatura y Humedad */}
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-cyan-400/30 transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-cyan-300">Ambiente</h2>
+            <Thermometer className="w-6 h-6 text-cyan-400" />
           </div>
 
-          {/* Infrared Sensor Card */}
-          <div className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6 hover:border-purple-400/30 transition-all duration-300 hover:scale-105">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-purple-300">Disponibilidad de Alimentos</h2>
-                <div className="p-2 bg-purple-500/20 rounded-xl">
-                  <Eye className="w-6 h-6 text-purple-400" />
-                </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Thermometer className="w-4 h-4 text-red-400" />
+                <span className="text-sm text-slate-300">Temperatura</span>
               </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-300">Estado</span>
-                  <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
-                    infrared?.estado 
-                      ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-red-500/20 text-red-400'
-                  }`}>
-                    <div className={`w-2 h-2 rounded-full ${
-                      infrared?.estado ? 'bg-green-400' : 'bg-red-400'
-                    } animate-pulse`}></div>
-                    <span className="text-sm font-medium">
-                      {infrared?.estado ? "Detectado" : "Sin detección"}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <span className="text-xl font-bold">
+                {dht?.temperatura ?? "--"}°C
+              </span>
             </div>
-          </div>
 
-          {/* Servo Control Card */}
-          <div className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6 hover:border-emerald-400/30 transition-all duration-300 hover:scale-105">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-emerald-300">Control de Alimento</h2>
-                <div className="p-2 bg-emerald-500/20 rounded-xl">
-                  <Settings className="w-6 h-6 text-emerald-400" />
-                </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Droplets className="w-4 h-4 text-blue-400" />
+                <span className="text-sm text-slate-300">Humedad</span>
               </div>
-
-              <div className="space-y-4">
-                <button
-                  onClick={toggleServo}
-                  disabled={isDispensing}
-                  className={`w-full mt-4 px-4 py-3 ${
-                    isDispensing 
-                      ? 'bg-gray-600 cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 hover:scale-105'
-                  } transition-all duration-300 rounded-xl font-semibold text-white shadow-lg hover:shadow-emerald-500/25 flex items-center justify-center space-x-2`}
-                >
-                  {isDispensing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      <span>Dispensando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-4 h-4" />
-                      <span>Dispensar</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              <span className="text-xl font-bold">
+                {dht?.humedad ?? "--"}%
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Activity Log */}
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6 mb-8">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2 bg-amber-500/20 rounded-xl">
-              <Clock className="w-6 h-6 text-amber-400" />
-            </div>
-            <h2 className="text-2xl font-semibold text-amber-300">Historial de Actividad</h2>
+        {/* Sensor Infrarrojo */}
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-purple-400/30 transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-purple-300">Detección</h2>
+            <Eye className="w-6 h-6 text-purple-400" />
           </div>
 
-          <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
-            {log?.length > 0 ? (
-              log.map((entry, idx) => (
-                <div 
-                  key={idx} 
-                  className="flex items-center justify-between p-4 bg-slate-800/30 rounded-xl border border-white/5 hover:border-white/10 transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-3 h-3 rounded-full ${
-                      entry.status ? 'bg-green-400' : 'bg-red-400'
-                    }`}></div>
-                    <span className="text-slate-300 font-mono text-sm">
-                      {entry.timestamp}
-                    </span>
-                  </div>
-                  <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
-                    entry.status 
-                      ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-red-500/20 text-red-400'
-                  }`}>
-                    <span>{entry.status ? "Abierto" : "Cerrado"}</span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-12">
-                <Clock className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-                <p className="text-slate-400">No hay historial disponible aún</p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-300">Estado</span>
+              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
+                infrared?.estado 
+                  ? 'bg-green-500/20 text-green-400' 
+                  : 'bg-gray-500/20 text-gray-400'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  infrared?.estado ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
+                }`}></div>
+                <span>{infrared?.estado ? "Detectado" : "Libre"}</span>
+              </div>
+            </div>
+
+            {infrared?.fechaHora && (
+              <div>
+                <span className="text-xs text-slate-400">Última detección:</span>
+                <p className="text-sm font-mono mt-1">
+                  {infrared.fechaHora}
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Temperature & Humidity Chart */}
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-6">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl">
-              <TrendingUp className="w-6 h-6 text-cyan-400" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-semibold bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">
-                Historial de Temperatura y Humedad
-              </h2>
-              <p className="text-slate-400 text-sm">Últimas 24 horas</p>
-            </div>
+        {/* Control del Servo */}
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-emerald-400/30 transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-emerald-300">Dispensador</h2>
+            <Settings className="w-6 h-6 text-emerald-400" />
           </div>
 
-          <div className="bg-slate-900/30 rounded-2xl p-4 border border-white/5">
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={historialDht} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" />
-                <XAxis 
-                  dataKey="time" 
-                  stroke="#94a3b8"
-                  fontSize={12}
-                  tick={{ fill: '#94a3b8' }}
-                />
-                <YAxis 
-                  stroke="#94a3b8"
-                  fontSize={12}
-                  tick={{ fill: '#94a3b8' }}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend 
-                  wrapperStyle={{ color: '#94a3b8' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="temperatura" 
-                  stroke="#ef4444"
-                  strokeWidth={2}
-                  name="Temperatura"
-                  dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2, fill: '#1e293b' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="humedad" 
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  name="Humedad"
-                  dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#1e293b' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-300">Estado</span>
+              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
+                servoStatus 
+                  ? 'bg-green-500/20 text-green-400' 
+                  : 'bg-red-500/20 text-red-400'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  servoStatus ? 'bg-green-400' : 'bg-red-400'
+                }`}></div>
+                <span>{servoStatus ? "Activo" : "Inactivo"}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={toggleServo}
+              className="w-full px-4 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 transition-all duration-300 rounded-xl font-semibold shadow-lg hover:shadow-emerald-500/25 hover:scale-105 flex items-center justify-center space-x-2"
+            >
+              <Zap className="w-4 h-4" />
+              <span>Dispensar Alimento</span>
+            </button>
           </div>
         </div>
       </div>
 
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(51, 65, 85, 0.3);
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(99, 102, 241, 0.5);
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(99, 102, 241, 0.7);
-        }
-      `}</style>
+      {/* Gráfica de Temperatura y Humedad */}
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
+          <h3 className="text-lg font-semibold text-slate-300 mb-6 flex items-center space-x-2">
+            <Activity className="w-5 h-5 text-cyan-400" />
+            <span>Historial de Temperatura y Humedad</span>
+          </h3>
+          
+          {dhtHistory.length > 0 ? (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dhtHistory} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis 
+                    dataKey="hora" 
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                  />
+                  <YAxis 
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="temperatura" 
+                    stroke="#EF4444" 
+                    strokeWidth={2}
+                    dot={{ fill: '#EF4444', strokeWidth: 2, r: 4 }}
+                    name="Temperatura (°C)"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="humedad" 
+                    stroke="#3B82F6" 
+                    strokeWidth={2}
+                    dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }}
+                    name="Humedad (%)"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-80 flex items-center justify-center">
+              <div className="text-center text-slate-400">
+                <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No hay datos históricos disponibles</p>
+                <p className="text-sm mt-2">Los datos aparecerán aquí una vez que se registren lecturas</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Botón de actualización manual */}
+      <div className="fixed bottom-6 right-6">
+        <button
+          onClick={fetchData}
+          className="bg-slate-800/80 backdrop-blur-sm border border-white/20 rounded-full p-3 hover:bg-slate-700/80 transition-all"
+          title="Actualizar datos"
+        >
+          <Activity className="w-5 h-5 text-cyan-400" />
+        </button>
+      </div>
     </div>
   );
 }

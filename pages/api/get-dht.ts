@@ -1,48 +1,29 @@
-// pages/api/get-dht.ts
-import type { NextApiRequest, NextApiResponse } from "next";
-import { db } from "../../lib/firebase";
-
-type DHTReading = {
-  temperatura: number;
-  humedad: number;
-  fechaHora: string;
-};
+import { NextApiRequest, NextApiResponse } from 'next';
+import { db } from '../../lib/firebase'; // Usando tu configuración existente
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
   try {
-    const rootSnapshot = await db.collection("dht11").get();
-    const allReadings: DHTReading[] = [];
-
-    for (const doc of rootSnapshot.docs) {
-      const subSnapshot = await db
-        .collection("dht11")
-        .doc(doc.id)
-        .collection("lecturas")
-        .orderBy("fechaHora", "desc")
-        .get();
-
-      subSnapshot.forEach((subDoc: FirebaseFirestore.QueryDocumentSnapshot) => {
-        const data = subDoc.data();
-        if (data?.temperatura != null && data?.humedad != null && data?.fechaHora) {
-          allReadings.push({
-            temperatura: data.temperatura,
-            humedad: data.humedad,
-            fechaHora: data.fechaHora,
-          });
-        }
-      });
+    const today = new Date().toLocaleDateString('en-CA'); // Formato: YYYY-MM-DD
+    const dhtRef = db.collection('dht11').doc(today).collection('lecturas');
+    const snapshot = await dhtRef.orderBy('fechaHora', 'desc').limit(1).get();
+    
+    if (snapshot.empty) {
+      return res.status(200).json({ temperatura: null, humedad: null });
     }
 
-    // Ordenar todas las lecturas por fechaHora (más recientes primero)
-    allReadings.sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime());
-
-    if (allReadings.length > 0) {
-  res.status(200).json(allReadings[0]);
-  } else {
-  res.status(404).json({ error: "No DHT data found" });
-}
-  } catch (err) {
-    console.error("Error fetching DHT data:", err);
-    res.status(500).json({ error: "Internal server error" });
+    const latestReading = snapshot.docs[0].data();
+    
+    res.status(200).json({
+      temperatura: latestReading.temperatura,
+      humedad: latestReading.humedad,
+      fechaHora: latestReading.fechaHora
+    });
+  } catch (error) {
+    console.error('Error fetching DHT data:', error);
+    res.status(500).json({ error: 'Failed to fetch DHT data' });
   }
 }
