@@ -36,7 +36,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Ordenar todas las lecturas por fechaHora (más recientes primero)
     allReadings.sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime());
 
-    res.status(200).json(allReadings);
+    if (allReadings.length > 0) {
+  res.status(200).json(allReadings[0]);
+  } else {
+  res.status(404).json({ error: "No DHT data found" });
+}
   } catch (err) {
     console.error("Error fetching DHT data:", err);
     res.status(500).json({ error: "Internal server error" });
