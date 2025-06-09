@@ -80,14 +80,7 @@ export default function Home() {
     fetchData();
   }, []);
 
-  const toggleServo = async () => {
-    try {
-      const res = await fetch("/api/servo", { method: "POST" });
-      const data = await res.json();
-    } catch (error) {
-      console.error("Error toggling servo:", error);
-    }
-  };
+  
 
   // Tipos para el tooltip personalizado
   interface TooltipPayload {
@@ -235,7 +228,6 @@ export default function Home() {
                 
 
                 <button
-                  onClick={toggleServo}
                   className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 transition-all duration-300 rounded-xl font-semibold text-white shadow-lg hover:shadow-emerald-500/25 hover:scale-105 flex items-center justify-center space-x-2"
                 >
                   <Zap className="w-4 h-4" />
