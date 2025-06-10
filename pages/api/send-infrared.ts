@@ -5,6 +5,11 @@ import { db } from '../../lib/firebase';
 import { infraredSchema } from '../../lib/validateData';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  // Agregar encabezados anti-caché
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
   const parsed = infraredSchema.safeParse(req.body);
