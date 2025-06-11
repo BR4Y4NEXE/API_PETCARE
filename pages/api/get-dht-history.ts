@@ -1,9 +1,7 @@
-// pages/api/get-dht-history.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '../../lib/firebase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Agregar encabezados anti-caché
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
@@ -13,12 +11,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const today = new Date().toLocaleDateString('en-CA'); // Formato: YYYY-MM-DD
-    const dhtRef = db.collection('dht11').doc(today).collection('lecturas');
-    
-    // Obtener las últimas 20 lecturas para la gráfica
+    // Formato YYYY-MM-DD garantizado
+    const today = new Date();
+    const formattedDate = `${today.getFullYear()}-${(today.getMonth() + 1)
+      .toString()
+      .padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+
+    const dhtRef = db.collection('dht11').doc(formattedDate).collection('lecturas');
     const snapshot = await dhtRef.orderBy('fechaHora', 'desc').limit(20).get();
-    
+
     if (snapshot.empty) {
       return res.status(200).json({ data: [] });
     }
@@ -29,10 +30,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         temperatura: data.temperatura,
         humedad: data.humedad,
         fechaHora: data.fechaHora,
-        // Extraer solo la hora para mostrar en la gráfica
         hora: data.fechaHora ? data.fechaHora.split(' ')[1]?.substring(0, 5) : ''
       };
-    }).reverse(); // Invertir para mostrar cronológicamente
+    }).reverse();
 
     res.status(200).json({ data: readings });
   } catch (error) {
