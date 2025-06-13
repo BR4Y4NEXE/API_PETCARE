@@ -164,49 +164,48 @@ export default function SimpleDashboard() {
 
   // Activar servo usando el nuevo endpoint trigger-servo
   const activateServo = async () => {
-    if (isActivatingServo) return; // Prevenir múltiples clics
-    
-    setIsActivatingServo(true);
-    
-    try {
-      const response = await fetch("/api/trigger-servo", { 
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Servo command sent:", data);
-        
-        // Mostrar feedback visual inmediato
-        setServoStatus(true);
-        
-        // Actualizar datos después de un breve delay para dar tiempo al dispositivo IoT
-        setTimeout(() => {
-          fetchAllData();
-        }, 3000);
-        
-        // Resetear estado del servo después de un tiempo
-        setTimeout(() => {
-          setServoStatus(false);
-        }, 8000);
-        
-      } else {
-        const errorData = await response.json();
-        console.error("Error response:", errorData);
-        alert("Error al enviar comando: " + (errorData.error || "Error desconocido"));
+  if (isActivatingServo) return;
+  
+  setIsActivatingServo(true);
+  
+  try {
+    const response = await fetch("/api/trigger-servo", { 
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        // Agregar la API key aquí
+        'X-API-Key': '0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b'
       }
-    } catch (error) {
-      console.error("Error activating servo:", error);
-      alert("Error de conexión al activar el servo");
-    } finally {
-      setIsActivatingServo(false);
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log("Servo command sent:", data);
+      
+      setServoStatus(true);
+      
+      setTimeout(() => {
+        fetchAllData();
+      }, 3000);
+      
+      setTimeout(() => {
+        setServoStatus(false);
+      }, 8000);
+      
+    } else {
+      const errorData = await response.json();
+      console.error("Error response:", errorData);
+      alert("Error al enviar comando: " + (errorData.error || "Error desconocido"));
     }
-  };
+  } catch (error) {
+    console.error("Error activating servo:", error);
+    alert("Error de conexión al activar el servo");
+  } finally {
+    setIsActivatingServo(false);
+  }
+};
 
   // Componente para tooltip personalizado
   const CustomTooltip = ({ active, payload, label }: any) => {
