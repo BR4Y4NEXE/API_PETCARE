@@ -13,17 +13,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'GET') {
     try {
       const servoRef = db.collection('servo_motor').doc(today).collection('activaciones');
+      
+      // Opción A: Solo usar where sin orderBy
       const snapshot = await servoRef
         .where('procesado', '==', false)
-        .orderBy('fechaHoraAccionado', 'desc')
-        .limit(1)
+        .limit(10) // Aumentamos el límite para obtener más documentos
         .get();
 
       if (!snapshot.empty) {
-        const doc = snapshot.docs[0];
+        // Ordenamos en memoria y tomamos el más reciente
+        const docs = snapshot.docs.sort((a, b) => {
+          const dateA = new Date(a.data().fechaHoraAccionado);
+          const dateB = new Date(b.data().fechaHoraAccionado);
+          return dateB.getTime() - dateA.getTime(); // Orden descendente
+        });
+
+        const doc = docs[0];
         const data = doc.data();
 
-        // En lugar de update, usar set con merge para evitar errores si el doc cambia
+        // Marcar como procesado
         if (doc.exists) {
           await doc.ref.set({ ...data, procesado: true }, { merge: true });
         }
