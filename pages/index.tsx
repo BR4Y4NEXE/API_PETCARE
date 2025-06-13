@@ -28,6 +28,7 @@ export default function SimpleDashboard() {
   const [dhtHistory, setDhtHistory] = useState<DhtHistoryData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isActivatingServo, setIsActivatingServo] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>("");
 
   // Función para obtener datos DHT
@@ -161,29 +162,49 @@ export default function SimpleDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Activar servo
+  // Activar servo usando el nuevo endpoint trigger-servo
   const activateServo = async () => {
+    if (isActivatingServo) return; // Prevenir múltiples clics
+    
+    setIsActivatingServo(true);
+    
     try {
-      const response = await fetch("/api/servo", { 
+      const response = await fetch("/api/trigger-servo", { 
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         }
       });
       
       if (response.ok) {
         const data = await response.json();
-        console.log("Servo activated:", data);
+        console.log("Servo command sent:", data);
+        
+        // Mostrar feedback visual inmediato
         setServoStatus(true);
         
-        // Actualizar datos después de 2 segundos
+        // Actualizar datos después de un breve delay para dar tiempo al dispositivo IoT
         setTimeout(() => {
           fetchAllData();
-        }, 2000);
+        }, 3000);
+        
+        // Resetear estado del servo después de un tiempo
+        setTimeout(() => {
+          setServoStatus(false);
+        }, 8000);
+        
+      } else {
+        const errorData = await response.json();
+        console.error("Error response:", errorData);
+        alert("Error al enviar comando: " + (errorData.error || "Error desconocido"));
       }
     } catch (error) {
       console.error("Error activating servo:", error);
+      alert("Error de conexión al activar el servo");
+    } finally {
+      setIsActivatingServo(false);
     }
   };
 
@@ -322,10 +343,24 @@ export default function SimpleDashboard() {
 
             <button
               onClick={activateServo}
-              className="w-full px-4 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 transition-all duration-300 rounded-xl font-semibold shadow-lg hover:shadow-emerald-500/25 hover:scale-105 flex items-center justify-center space-x-2 active:scale-95"
+              disabled={isActivatingServo}
+              className={`w-full px-4 py-3 transition-all duration-300 rounded-xl font-semibold shadow-lg flex items-center justify-center space-x-2 active:scale-95 ${
+                isActivatingServo 
+                  ? 'bg-gradient-to-r from-slate-600 to-slate-700 cursor-not-allowed opacity-70' 
+                  : 'bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 hover:shadow-emerald-500/25 hover:scale-105'
+              }`}
             >
-              <Zap className="w-4 h-4" />
-              <span>Dispensar Alimento</span>
+              {isActivatingServo ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Enviando comando...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4" />
+                  <span>Dispensar Alimento</span>
+                </>
+              )}
             </button>
           </div>
         </div>
