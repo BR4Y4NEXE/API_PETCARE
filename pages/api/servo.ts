@@ -1,3 +1,4 @@
+// pages/api/servo.ts
 import { db } from '../../lib/firebase';
 import { NextApiRequest, NextApiResponse } from 'next';
 
@@ -11,20 +12,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   
   if (req.method === 'GET') {
     try {
+      // Buscar activaciones pendientes (no procesadas por el dispositivo)
       const servoRef = db.collection('servo_motor').doc(today).collection('activaciones');
-      const snapshot = await servoRef.orderBy('fechaHoraAccionado', 'desc').limit(1).get();
-      
-      // Para simplificar, consideramos que si hay una activación reciente (últimos 5 segundos), está "abierto"
-      let status = false;
-      if (!snapshot.empty) {
-        const latestActivation = snapshot.docs[0].data();
-        const activationTime = new Date(latestActivation.fechaHoraAccionado.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
-        const now = new Date();
-        const timeDiff = (now.getTime() - activationTime.getTime()) / 1000; // diferencia en segundos
-        status = timeDiff < 5; // Considera "abierto" si fue activado hace menos de 5 segundos
-      }
+      const snapshot = await servoRef
+        .where('procesado', '==', false) // Solo activaciones no procesadas
+        .orderBy('fechaHoraAccionado', 'desc')
+        .limit(1)
+        .get();
 
-      res.status(200).json({ status });
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        const data = doc.data();
+        
+        // Marcar como procesado
+        await doc.ref.update({ procesado: true });
+        
+        res.status(200).json({ 
+          hasNewActivation: true,
+          fechaHoraAccionado: data.fechaHoraAccionado 
+        });
+      } else {
+        res.status(200).json({ 
+          hasNewActivation: false,
+          fechaHoraAccionado: null 
+        });
+      }
     } catch (error) {
       console.error('Error fetching servo status:', error);
       res.status(500).json({ error: 'Failed to fetch servo status' });
@@ -44,12 +56,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const servoRef = db.collection('servo_motor').doc(today).collection('activaciones');
       await servoRef.add({
-        fechaHoraAccionado: fechaHoraAccionado
+        fechaHoraAccionado: fechaHoraAccionado,
+        procesado: false // Nueva activación no procesada
       });
 
       res.status(200).json({ 
         status: true, 
-        message: 'Servo activated',
+        message: 'Servo activation queued',
         fechaHoraAccionado: fechaHoraAccionado
       });
     } catch (error) {
