@@ -3,19 +3,18 @@ import { db } from '../../lib/firebase';
 import { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Agregar encabezados anti-caché
+  // Evitar caché
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
 
-  const today = new Date().toLocaleDateString('en-CA');
-  
+  const today = new Date().toLocaleDateString('en-CA'); // formato YYYY-MM-DD
+
   if (req.method === 'GET') {
     try {
-      // Buscar activaciones pendientes (no procesadas por el dispositivo)
       const servoRef = db.collection('servo_motor').doc(today).collection('activaciones');
       const snapshot = await servoRef
-        .where('procesado', '==', false) // Solo activaciones no procesadas
+        .where('procesado', '==', false)
         .orderBy('fechaHoraAccionado', 'desc')
         .limit(1)
         .get();
@@ -23,10 +22,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!snapshot.empty) {
         const doc = snapshot.docs[0];
         const data = doc.data();
-        
-        // Marcar como procesado
-        await doc.ref.update({ procesado: true });
-        
+
+        // En lugar de update, usar set con merge para evitar errores si el doc cambia
+        if (doc.exists) {
+          await doc.ref.set({ ...data, procesado: true }, { merge: true });
+        }
+
         res.status(200).json({ 
           hasNewActivation: true,
           fechaHoraAccionado: data.fechaHoraAccionado 
@@ -42,6 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to fetch servo status' });
     }
   } 
+  
   else if (req.method === 'POST') {
     try {
       const now = new Date();
@@ -57,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const servoRef = db.collection('servo_motor').doc(today).collection('activaciones');
       await servoRef.add({
         fechaHoraAccionado: fechaHoraAccionado,
-        procesado: false // Nueva activación no procesada
+        procesado: false
       });
 
       res.status(200).json({ 
@@ -70,6 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to activate servo' });
     }
   } 
+  
   else {
     res.status(405).json({ message: 'Method not allowed' });
   }
