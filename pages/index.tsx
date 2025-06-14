@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Thermometer, Droplets, Eye, Settings, Activity, Zap, RefreshCw } from "lucide-react";
+import { Thermometer, Droplets, Eye, Settings, Activity, Zap, RefreshCw, Clock } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Tipos más robustos
@@ -21,11 +21,17 @@ type DhtHistoryData = {
   hora: string;
 };
 
+type ServoLogData = {
+  status: boolean;
+  timestamp: string;
+};
+
 export default function SimpleDashboard() {
   const [infrared, setInfrared] = useState<InfraredData>({ estado: false, fechaHora: null });
   const [servoStatus, setServoStatus] = useState<boolean>(false);
   const [dht, setDht] = useState<DhtData>({ temperatura: null, humedad: null });
   const [dhtHistory, setDhtHistory] = useState<DhtHistoryData[]>([]);
+  const [servoLog, setServoLog] = useState<ServoLogData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isActivatingServo, setIsActivatingServo] = useState(false);
@@ -129,6 +135,28 @@ export default function SimpleDashboard() {
     }
   };
 
+  // Función para obtener registros del servo
+  const fetchServoLog = async () => {
+    try {
+      const response = await fetch("/api/get-servo-log", {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Servo Log:", data);
+        setServoLog(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error("Error fetching servo log:", error);
+      setServoLog([]);
+    }
+  };
+
   // Función principal para obtener todos los datos
   const fetchAllData = async (showRefresh = false) => {
     if (showRefresh) setIsRefreshing(true);
@@ -138,7 +166,8 @@ export default function SimpleDashboard() {
         fetchDhtData(),
         fetchInfraredData(),
         fetchServoStatus(),
-        fetchDhtHistory()
+        fetchDhtHistory(),
+        fetchServoLog()
       ]);
       
       setLastUpdate(new Date().toLocaleTimeString('es-ES'));
@@ -206,6 +235,19 @@ export default function SimpleDashboard() {
     setIsActivatingServo(false);
   }
 };
+
+  // Función para formatear fecha y hora
+  const formatDateTime = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      return {
+        date: date.toLocaleDateString('es-ES'),
+        time: date.toLocaleTimeString('es-ES')
+      };
+    } catch (error) {
+      return { date: 'N/A', time: 'N/A' };
+    }
+  };
 
   // Componente para tooltip personalizado
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -382,6 +424,62 @@ export default function SimpleDashboard() {
               )}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Tabla de Registros del Servo */}
+      <div className="max-w-6xl mx-auto mb-8">
+        <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
+          <h3 className="text-lg font-semibold text-slate-300 mb-6 flex items-center space-x-2">
+            <Clock className="w-5 h-5 text-emerald-400" />
+            <span>Registro de Activaciones del Dispensador</span>
+            <span className="text-sm text-slate-500">({servoLog.length} registros)</span>
+          </h3>
+          
+          {servoLog.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="text-left py-3 px-4 font-medium text-slate-400">#</th>
+                    <th className="text-left py-3 px-4 font-medium text-slate-400">Estado</th>
+                    <th className="text-left py-3 px-4 font-medium text-slate-400">Timestamp Completo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {servoLog.map((log, index) => {
+                    return (
+                      <tr 
+                        key={index} 
+                        className="border-b border-slate-800/50 hover:bg-slate-700/20 transition-colors"
+                      >
+                        <td className="py-3 px-4 text-slate-300">{index + 1}</td>
+                        <td className="py-3 px-4">
+                          <div className={`flex items-center space-x-2 px-2 py-1 rounded-full text-xs font-medium w-fit ${
+                            log.status 
+                              ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                              : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          }`}>
+                            <div className={`w-1.5 h-1.5 rounded-full ${
+                              log.status ? 'bg-green-400' : 'bg-red-400'
+                            }`}></div>
+                            <span>{log.status ? "Activado" : "Inactivo"}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-slate-400 font-mono text-xs">{log.timestamp}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-slate-400">
+              <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No hay registros de activaciones</p>
+              <p className="text-sm mt-2">Los registros aparecerán aquí cuando se active el dispensador</p>
+            </div>
+          )}
         </div>
       </div>
 
