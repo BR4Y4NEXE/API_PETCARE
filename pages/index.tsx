@@ -297,8 +297,8 @@ export default function SimpleDashboard() {
       <span className="text-sm text-slate-300">Disponibilidad</span>
       <div className={`flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-medium ${
         infrared.estado 
-          ? 'bg-green-500/20 text-green-400 border border-green-500/30'  // DISPONIBLE = Verde
-          : 'bg-red-500/20 text-red-400 border border-red-500/30'        // OCUPADO = Rojo
+          ? 'bg-red-500/20 text-red-400 border border-red-500/30'  // DISPONIBLE = Verde
+          : 'bg-green-500/20 text-green-400 border border-green-500/30' // OCUPADO = Rojo
       }`}>
         <div className={`w-2 h-2 rounded-full ${
           infrared.estado ? 'bg-green-400' : 'bg-red-400 animate-pulse'
@@ -312,8 +312,8 @@ export default function SimpleDashboard() {
       <span className="text-xs text-slate-400 block mb-1">Estado actual:</span>
       <p className="text-sm text-slate-300">
         {infrared.estado 
-          ? "🟢 El comedero está libre para usar" 
-          : "🔴 Mascota está comiendo actualmente"}
+          ? "🔴 Esta vacio" 
+          : "🟢 Esta lleno"}
       </p>
     </div>
 
