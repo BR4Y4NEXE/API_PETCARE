@@ -286,10 +286,9 @@ export default function SimpleDashboard() {
         </div>
 
         {/* Sensor Infrarrojo */}
-        /* Sensor Infrarrojo - Disponibilidad del Comedero */
 <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-purple-400/30 transition-all duration-300">
   <div className="flex items-center justify-between mb-4">
-    <h2 className="text-lg font-semibold text-purple-300">Comedero</h2>
+    <h2 className="text-lg font-semibold text-purple-300">Comida disponible</h2>
     <Eye className="w-6 h-6 text-purple-400" />
   </div>
 
@@ -304,7 +303,7 @@ export default function SimpleDashboard() {
         <div className={`w-2 h-2 rounded-full ${
           infrared.estado ? 'bg-green-400' : 'bg-red-400 animate-pulse'
         }`}></div>
-        <span>{infrared.estado ? "DISPONIBLE" : "OCUPADO"}</span>
+        <span>{infrared.estado ? "No hay comida" : "Hay comida"}</span>
       </div>
     </div>
 
