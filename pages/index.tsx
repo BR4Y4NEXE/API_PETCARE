@@ -286,37 +286,58 @@ export default function SimpleDashboard() {
         </div>
 
         {/* Sensor Infrarrojo */}
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-purple-400/30 transition-all duration-300">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-purple-300">Detección</h2>
-            <Eye className="w-6 h-6 text-purple-400" />
-          </div>
+        /* Sensor Infrarrojo - Disponibilidad del Comedero */
+<div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-purple-400/30 transition-all duration-300">
+  <div className="flex items-center justify-between mb-4">
+    <h2 className="text-lg font-semibold text-purple-300">Comedero</h2>
+    <Eye className="w-6 h-6 text-purple-400" />
+  </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-300">Estado</span>
-              <div className={`flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-medium ${
-                infrared.estado 
-                  ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                  : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${
-                  infrared.estado ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
-                }`}></div>
-                <span>{infrared.estado ? "Detectado" : "Libre"}</span>
-              </div>
-            </div>
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <span className="text-sm text-slate-300">Disponibilidad</span>
+      <div className={`flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-medium ${
+        infrared.estado 
+          ? 'bg-green-500/20 text-green-400 border border-green-500/30'  // DISPONIBLE = Verde
+          : 'bg-red-500/20 text-red-400 border border-red-500/30'        // OCUPADO = Rojo
+      }`}>
+        <div className={`w-2 h-2 rounded-full ${
+          infrared.estado ? 'bg-green-400' : 'bg-red-400 animate-pulse'
+        }`}></div>
+        <span>{infrared.estado ? "DISPONIBLE" : "OCUPADO"}</span>
+      </div>
+    </div>
 
-            {infrared.fechaHora && (
-              <div className="bg-slate-700/30 rounded-lg p-3">
-                <span className="text-xs text-slate-400 block">Última detección:</span>
-                <p className="text-sm font-mono text-slate-300 mt-1">
-                  {infrared.fechaHora}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+    {/* Explicación clara del estado */}
+    <div className="bg-slate-700/30 rounded-lg p-3">
+      <span className="text-xs text-slate-400 block mb-1">Estado actual:</span>
+      <p className="text-sm text-slate-300">
+        {infrared.estado 
+          ? "🟢 El comedero está libre para usar" 
+          : "🔴 Mascota está comiendo actualmente"}
+      </p>
+    </div>
+
+    {infrared.fechaHora && (
+      <div className="bg-slate-700/30 rounded-lg p-3">
+        <span className="text-xs text-slate-400 block">Última actualización:</span>
+        <p className="text-sm font-mono text-slate-300 mt-1">
+          {infrared.fechaHora}
+        </p>
+      </div>
+    )}
+
+    {/* Indicador de falta de datos */}
+    {!infrared.fechaHora && (
+      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+        <span className="text-xs text-yellow-400 block">⚠️ Sin datos recientes</span>
+        <p className="text-sm text-yellow-300 mt-1">
+          Esperando datos del sensor...
+        </p>
+      </div>
+    )}
+  </div>
+</div>
 
         {/* Control del Servo */}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-emerald-400/30 transition-all duration-300">
